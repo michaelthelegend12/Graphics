@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pip — Mascot Animation</title>
+<style>
+  :root {
+    --bg1: #1b1740;
+    --bg2: #0d0b24;
+    --body: #5ee6c4;
+    --body-dark: #2bb79a;
+    --belly: #c9fbef;
+    --ink: #17142f;
+    --cheek: #ff8fa3;
+    --sprout: #ffd166;
+    --loop: 8s;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(ellipse at 50% 35%, var(--bg1) 0%, var(--bg2) 75%);
+    display: grid; place-items: center; overflow: hidden;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: #f4f1ea;
+  }
+  svg { width: min(92vw, 78vh, 640px); height: auto; overflow: visible; }
+  .fb { transform-box: fill-box; }
+
+  /* stars */
+  .star { animation: twinkle 3s ease-in-out infinite; }
+  @keyframes twinkle { 50% { opacity: .25; } }
+
+  /* ground shadow */
+  .shadow { transform-origin: 200px 346px; animation: shadow var(--loop) infinite; }
+  @keyframes shadow {
+    0%, 30%   { transform: scale(1); opacity: .35; }
+    36%       { transform: scale(1.08); opacity: .4; }
+    40%       { transform: scale(.6); opacity: .18; }
+    44%       { transform: scale(1); opacity: .35; }
+    47%       { transform: scale(1.1); opacity: .4; }
+    52%       { transform: scale(.42); opacity: .12; }
+    57%       { transform: scale(1.08); opacity: .4; }
+    62%, 100% { transform: scale(1); opacity: .35; }
+  }
+
+  /* body hop with squash and stretch (origin: feet) */
+  .hopper { transform-origin: 200px 340px; animation: hop var(--loop) infinite; }
+  @keyframes hop {
+    0%       { transform: translateY(0) scale(1.03, .94); }
+    9%       { transform: translateY(0) scale(1.03, .94); }
+    12%      { transform: translateY(-14px) scale(.94, 1.08); }
+    16%      { transform: translateY(0) scale(1.04, .95); }
+    20%, 30% { transform: translateY(0) scale(1, 1); }
+    35%      { transform: translateY(0) scale(1.12, .84); }
+    40%      { transform: translateY(-46px) scale(.9, 1.14); }
+    44%      { transform: translateY(0) scale(1.14, .82); }
+    47%      { transform: translateY(0) scale(1.1, .86); }
+    52%      { transform: translateY(-80px) scale(.88, 1.18); }
+    57%      { transform: translateY(0) scale(1.18, .78); }
+    61%      { transform: translateY(0) scale(.97, 1.04); }
+    66%      { transform: translateY(0) scale(1, 1) rotate(-3deg); }
+    71%      { transform: translateY(0) scale(1, 1) rotate(3deg); }
+    76%      { transform: translateY(0) scale(1, 1) rotate(-3deg); }
+    81%      { transform: translateY(0) scale(1, 1) rotate(2deg); }
+    86%      { transform: translateY(0) scale(1, 1) rotate(0); }
+    94%      { transform: translateY(0) scale(1.02, .97); }
+    100%     { transform: translateY(0) scale(1.03, .94); }
+  }
+
+  /* eyes: asleep, wake, blink, happy squint, sleepy */
+  .eyes { transform-origin: 200px 215px; animation: eyes var(--loop) infinite; }
+  @keyframes eyes {
+    0%, 9%   { transform: scaleY(.08); }
+    13%      { transform: scaleY(1.15); }
+    16%      { transform: scaleY(1); }
+    21%      { transform: scaleY(1); }
+    22%      { transform: scaleY(.08); }
+    24%      { transform: scaleY(1); }
+    55%      { transform: scaleY(1); }
+    57%      { transform: scaleY(.45); }
+    84%      { transform: scaleY(.45); }
+    87%      { transform: scaleY(1); }
+    90%      { transform: scaleY(.08); }
+    100%     { transform: scaleY(.08); }
+  }
+  .glint { animation: glint var(--loop) infinite; }
+  @keyframes glint { 0%, 9% { opacity: 0; } 14%, 90% { opacity: 1; } 92%, 100% { opacity: 0; } }
+
+  /* mouth swap */
+  .smile { animation: smile var(--loop) infinite; }
+  .open  { animation: openm var(--loop) infinite; opacity: 0; }
+  @keyframes smile { 0%, 55% { opacity: 1; } 56%, 86% { opacity: 0; } 87%, 100% { opacity: 1; } }
+  @keyframes openm { 0%, 55% { opacity: 0; } 56%, 86% { opacity: 1; } 87%, 100% { opacity: 0; } }
+
+  /* right arm waves, left arm cheers */
+  .arm-r { transform-origin: 262px 250px; animation: armr var(--loop) infinite; }
+  @keyframes armr {
+    0%, 17%  { transform: rotate(0); }
+    20%      { transform: rotate(-80deg); }
+    22%      { transform: rotate(-60deg); }
+    24%      { transform: rotate(-95deg); }
+    26%      { transform: rotate(-60deg); }
+    28%      { transform: rotate(-95deg); }
+    30%      { transform: rotate(-60deg); }
+    33%, 47% { transform: rotate(0); }
+    52%      { transform: rotate(-105deg); }
+    58%, 84% { transform: rotate(-105deg); }
+    90%, 100%{ transform: rotate(0); }
+  }
+  .arm-l { transform-origin: 138px 250px; animation: arml var(--loop) infinite; }
+  @keyframes arml {
+    0%, 47%  { transform: rotate(0); }
+    52%      { transform: rotate(105deg); }
+    58%, 84% { transform: rotate(105deg); }
+    90%, 100%{ transform: rotate(0); }
+  }
+
+  /* sprout bobs with a delay, like it has weight */
+  .sprout { transform-origin: 200px 118px; animation: sprout var(--loop) infinite; }
+  @keyframes sprout {
+    0%, 12%  { transform: rotate(-8deg); }
+    16%      { transform: rotate(10deg); }
+    20%      { transform: rotate(-4deg); }
+    36%      { transform: rotate(-6deg); }
+    41%      { transform: rotate(14deg); }
+    46%      { transform: rotate(-8deg); }
+    53%      { transform: rotate(-6deg); }
+    58%      { transform: rotate(18deg); }
+    63%      { transform: rotate(-10deg); }
+    70%, 82% { transform: rotate(6deg); }
+    76%      { transform: rotate(-6deg); }
+    100%     { transform: rotate(-8deg); }
+  }
+
+  /* zzz while asleep */
+  .zzz { animation: zzz var(--loop) infinite; opacity: 0; }
+  .zzz.z2 { animation-delay: .5s; }
+  @keyframes zzz {
+    0%   { opacity: 0; transform: translate(0, 0); }
+    4%   { opacity: .9; }
+    11%  { opacity: 0; transform: translate(14px, -26px); }
+    90%  { opacity: 0; transform: translate(0, 0); }
+    94%  { opacity: .9; }
+    100% { opacity: 0; transform: translate(14px, -26px); }
+  }
+
+  /* confetti, fired at the top of the big jump */
+  .conf {
+    opacity: 0;
+    animation: conf var(--loop) infinite;
+    animation-delay: var(--d, 0s);
+  }
+  @keyframes conf {
+    0%, 52%  { opacity: 0; transform: translate(0, 0) rotate(0); }
+    53%      { opacity: 1; }
+    66%      { opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
+    82%      { opacity: 1; transform: translate(calc(var(--x) * 1.15), calc(var(--y) + 190px)) rotate(calc(var(--r) * 1.8)); }
+    90%, 100%{ opacity: 0; transform: translate(calc(var(--x) * 1.2), calc(var(--y) + 240px)) rotate(calc(var(--r) * 2)); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hopper, .shadow, .eyes, .arm-r, .arm-l, .sprout, .conf, .zzz, .star, .smile, .open, .glint { animation: none; }
+    .eyes { transform: none; } .glint, .smile { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<svg viewBox="0 -70 400 470" role="img" aria-label="Pip, a round mint-green creature, wakes up, waves, hops and celebrates with confetti">
+  <!-- stars -->
+  <g fill="#f4f1ea" id="stars"></g>
+
+  <!-- ground -->
+  <ellipse class="shadow" cx="200" cy="346" rx="86" ry="11" fill="#000"/>
+
+  <g class="hopper">
+    <!-- feet -->
+    <ellipse cx="166" cy="338" rx="26" ry="12" fill="var(--body-dark)"/>
+    <ellipse cx="234" cy="338" rx="26" ry="12" fill="var(--body-dark)"/>
+
+    <!-- body -->
+    <path d="M200 112 C 292 112 322 210 316 270 C 312 320 274 344 200 344 C 126 344 88 320 84 270 C 78 210 108 112 200 112 Z" fill="var(--body)"/>
+    <ellipse cx="200" cy="288" rx="62" ry="46" fill="var(--belly)" opacity=".85"/>
+
+    <!-- left arm -->
+    <g class="arm-l">
+      <path d="M142 250 q-40 8 -46 36" fill="none" stroke="var(--body-dark)" stroke-width="22" stroke-linecap="round"/>
+    </g>
+
+    <!-- right arm (waves) -->
+    <g class="arm-r">
+      <path d="M258 250 q40 8 46 36" fill="none" stroke="var(--body-dark)" stroke-width="22" stroke-linecap="round"/>
+    </g>
+
+    <!-- sprout -->
+    <g class="sprout">
+      <path d="M200 120 C 200 100 204 86 214 74" fill="none" stroke="var(--body-dark)" stroke-width="8" stroke-linecap="round"/>
+      <circle cx="216" cy="68" r="13" fill="var(--sprout)"/>
+      <circle cx="212" cy="64" r="4" fill="#fff" opacity=".7"/>
+    </g>
+
+    <!-- face -->
+    <g class="eyes">
+      <ellipse cx="164" cy="215" rx="15" ry="19" fill="var(--ink)"/>
+      <ellipse cx="236" cy="215" rx="15" ry="19" fill="var(--ink)"/>
+      <g class="glint" fill="#fff">
+        <circle cx="169" cy="208" r="5"/><circle cx="241" cy="208" r="5"/>
+      </g>
+    </g>
+    <circle cx="140" cy="244" r="12" fill="var(--cheek)" opacity=".7"/>
+    <circle cx="260" cy="244" r="12" fill="var(--cheek)" opacity=".7"/>
+    <path class="smile" d="M184 246 Q200 262 216 246" fill="none" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/>
+    <g class="open">
+      <path d="M180 244 Q200 284 220 244 Z" fill="var(--ink)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M190 262 Q200 254 210 262 Q200 272 190 262 Z" fill="var(--cheek)"/>
+    </g>
+
+    <!-- zzz -->
+    <g fill="#c9fbef" font-weight="800" font-family="Helvetica, Arial, sans-serif">
+      <text class="zzz" x="270" y="118" font-size="26">z</text>
+      <text class="zzz z2" x="290" y="96" font-size="34">Z</text>
+    </g>
+  </g>
+
+  <!-- confetti -->
+  <g id="confetti" transform="translate(200 120)"></g>
+</svg>
+
+<script>
+  const NS = 'http://www.w3.org/2000/svg';
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  // Starfield
+  const stars = document.getElementById('stars');
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', rnd(-40, 440)); c.setAttribute('cy', rnd(-40, 300));
+    c.setAttribute('r', rnd(.8, 2.2)); c.setAttribute('class', 'star');
+    c.style.animationDelay = rnd(0, 3) + 's';
+    stars.appendChild(c);
+  }
+
+  // Confetti
+  const colors = ['#ff5d73', '#ffd166', '#6c7bff', '#4dd6c1', '#ffffff'];
+  const conf = document.getElementById('confetti');
+  for (let i = 0; i < 36; i++) {
+    const r = document.createElementNS(NS, 'rect');
+    const w = rnd(7, 13);
+    r.setAttribute('width', w); r.setAttribute('height', w * rnd(.4, .9));
+    r.setAttribute('fill', colors[i % colors.length]);
+    r.setAttribute('class', 'conf fb');
+    const a = rnd(-Math.PI * .95, -Math.PI * .05);
+    const d = rnd(90, 230);
+    r.style.setProperty('--x', Math.cos(a) * d + 'px');
+    r.style.setProperty('--y', Math.sin(a) * d * .8 + 'px');
+    r.style.setProperty('--r', rnd(-420, 420) + 'deg');
+    r.style.setProperty('--d', rnd(0, .12) + 's');
+    conf.appendChild(r);
+  }
+</script>
+</body>
+</html>
