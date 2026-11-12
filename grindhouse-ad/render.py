@@ -418,7 +418,7 @@ if __name__ == "__main__":
     out = "grindhouse-ad.mp4"; tmp = "tmp_render.mp4"
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
            "-i", "music.wav", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",
-           "-c:a", "aac", "-b:a", "192k", "-t", "15", "-movflags", "+faststart", tmp]
+           "-af", "volume=-2.9dB", "-c:a", "aac", "-b:a", "192k", "-t", "15", "-movflags", "+faststart", tmp]
     pr = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     with Pool(2, initializer=lambda: None) as pool:
         for fb in pool.imap(frame, range(N), chunksize=6): pr.stdin.write(fb)
