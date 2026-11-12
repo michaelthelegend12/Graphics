@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How a card payment works</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: #070f22; }
+  body { display: grid; place-items: center; overflow: hidden; font-family: Inter, "Helvetica Neue", Arial, sans-serif; }
+  canvas { width: min(100vw, 177.78vh); height: auto; aspect-ratio: 16 / 9; display: block; }
+  button {
+    position: fixed; right: 20px; bottom: 20px; padding: 10px 18px; border-radius: 999px;
+    border: 1px solid #5be7c4; background: #0d1a38; color: #5be7c4; font: 600 14px Inter, sans-serif; cursor: pointer;
+  }
+  body.render button { display: none; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<button id="replay">Replay</button>
+<script>
+// ---------------------------------------------------------------------------
+// How a card payment works: 15 s isometric explainer.
+// Everything is a pure function of time t (seconds), so the same code drives
+// the live preview here and the frame-by-frame MP4 render (render.mjs).
+// ---------------------------------------------------------------------------
+const W = 1920, H = 1080, DUR = 15;
+const S = 80;                                  // pixels per world unit
+const CO = Math.cos(Math.PI / 6), SI = 0.5;
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+
+const COL = {
+  bg0: '#0a1530', bg1: '#13265a',
+  navy: '#1d3a78', navyMid: '#21417f',
+  plat: '#182f63', platL: '#122450', platR: '#0c1a3b',
+  mint: '#5be7c4', mintLt: '#b4f7e5', mintDk: '#2fb898',
+  white: '#eef6ff', muted: '#8ea6d4',
+};
+
+// ---- helpers --------------------------------------------------------------
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, k) => a + (b - a) * k;
+const eio = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+const eout = k => 1 - Math.pow(1 - k, 3);
+const ein = k => k * k * k;
+const eback = k => { const c = 1.7; return Math.max(0, 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2)); };
+
+function hex(c) { const n = parseInt(c.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function shade(c, f) {               // f < 0 darker, f > 0 lighter
+  const [r, g, b] = hex(c), t = f < 0 ? 0 : 255, p = Math.abs(f);
+  return `rgb(${Math.round(r + (t - r) * p)},${Math.round(g + (t - g) * p)},${Math.round(b + (t - b) * p)})`;
+}
+function rgba(c, a) { const [r, g, b] = hex(c); return `rgba(${r},${g},${b},${a})`; }
+
+// world (x, y, z) -> iso pixels (before camera)
+function P(x, y, z = 0) { return [(x - y) * CO * S, (x + y) * SI * S - z * S]; }
+
+function poly(pts, fill, stroke, lw = 1.5) {
+  ctx.beginPath();
+  pts.forEach((p, i) => { const [sx, sy] = P(p[0], p[1], p[2]); i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); });
+  ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.stroke(); }
+}
+
+// flat-shaded box: top, +y face (lower left), +x face (lower right)
+function box(x, y, z, w, d, h, c, o = {}) {
+  const top = o.top || c, left = o.left || shade(c, -.22), right = o.right || shade(c, -.42);
+  poly([[x, y + d, z], [x + w, y + d, z], [x + w, y + d, z + h], [x, y + d, z + h]], left);
+  poly([[x + w, y, z], [x + w, y + d, z], [x + w, y + d, z + h], [x + w, y, z + h]], right);
+  poly([[x, y, z + h], [x + w, y, z + h], [x + w, y + d, z + h], [x, y + d, z + h]], top, o.edge, o.edgeW || 1.5);
+}
+
+// draw in a plane: origin + two world axes; fn draws in units where 100 = 1 world unit
+function plane(o, ax, ay, fn) {
+  const [ox, oy] = P(...o);
+  const a = P(o[0] + ax[0], o[1] + ax[1], o[2] + ax[2]), b = P(o[0] + ay[0], o[1] + ay[1], o[2] + ay[2]);
+  ctx.save();
+  ctx.transform((a[0] - ox) / 100, (a[1] - oy) / 100, (b[0] - ox) / 100, (b[1] - oy) / 100, ox, oy);
+  fn(); ctx.restore();
+}
+const onTop = (x, y, z, fn) => plane([x, y, z], [1, 0, 0], [0, 1, 0], fn);      // u:+x  v:+y
+const onFrontY = (x, y, z, fn) => plane([x, y, z], [1, 0, 0], [0, 0, -1], fn);  // facade facing +y, v down
+const onFrontX = (x, y, z, fn) => plane([x, y, z], [0, -1, 0], [0, 0, -1], fn); // face facing +x, v down
+
+function rrect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function check(cx, cy, s, k, color, lw) {   // check mark drawn progressively (k 0..1)
+  if (k <= 0) return;
+  const p = [[cx - s * .5, cy], [cx - s * .12, cy + s * .38], [cx + s * .55, cy - s * .38]];
+  const l1 = Math.hypot(p[1][0] - p[0][0], p[1][1] - p[0][1]), l2 = Math.hypot(p[2][0] - p[1][0], p[2][1] - p[1][1]);
+  const d = k * (l1 + l2);
+  ctx.beginPath(); ctx.moveTo(...p[0]);
+  if (d <= l1) ctx.lineTo(lerp(p[0][0], p[1][0], d / l1), lerp(p[0][1], p[1][1], d / l1));
+  else { ctx.lineTo(...p[1]); const e = (d - l1) / l2; ctx.lineTo(lerp(p[1][0], p[2][0], e), lerp(p[1][1], p[2][1], e)); }
+  ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+}
+function rand(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+// monotone cubic interpolation (Fritsch–Carlson): smooth, no overshoot
+function monotone(xs, ys) {
+  const n = xs.length, d = [], m = new Array(n);
+  for (let i = 0; i < n - 1; i++) d.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = m[i + 1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b;
+    if (s > 9) { const t = 3 / Math.sqrt(s); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
+  }
+  return x => {
+    if (x <= xs[0]) return ys[0];
+    if (x >= xs[n - 1]) return ys[n - 1];
+    let i = 0; while (x > xs[i + 1]) i++;
+    const h = xs[i + 1] - xs[i], t = (x - xs[i]) / h, t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * m[i + 1];
+  };
+}
+
+// ---- timeline -------------------------------------------------------------
+const T = {
+  tap: 2.3,
+  out0: 3.4, out1: 6.0,        // request travels terminal -> bank
+  chk: [7.0, 7.7, 8.4],        // bank checks tick
+  back0: 9.4, back1: 11.6,     // response travels bank -> terminal
+  ok: 11.6,                    // approved
+};
+
+// ---- camera (continuous: a monotone spline through key poses) -------------
+const FOC = {
+  wide: [7.6, 1.6, 0.6], term: [1.1, 1.5, 0.9], mid: [6.6, 1.5, 0.4], bank: [12.2, 2.2, 1.4],
+};
+const CAM_KEYS = [
+  [0.0, 'wide', 0.70], [1.3, 'term', 1.50], [3.0, 'term', 1.60], [4.8, 'mid', 1.12],
+  [6.4, 'bank', 1.00], [9.2, 'bank', 1.06], [10.5, 'mid', 1.12], [11.9, 'term', 1.50],
+  [12.9, 'term', 1.58], [14.3, 'wide', 0.74], [15.0, 'wide', 0.71],
+];
+const camX = monotone(CAM_KEYS.map(k => k[0]), CAM_KEYS.map(k => P(...FOC[k[1]])[0]));
+const camY = monotone(CAM_KEYS.map(k => k[0]), CAM_KEYS.map(k => P(...FOC[k[1]])[1]));
+const camZ = monotone(CAM_KEYS.map(k => k[0]), CAM_KEYS.map(k => Math.log(k[2])));
+function camera(t) { return { x: camX(t), y: camY(t), z: Math.exp(camZ(t)) }; }
+
+// ---- scene pieces ---------------------------------------------------------
+const BX = 11.2, BY = -0.4;                // bank origin
+const PATH = { x0: 2.2, x1: 11.2, y: 1.5 };
+
+function background(t, cam) {
+  const g = ctx.createRadialGradient(W * .5, H * .42, 80, W * .5, H * .5, W * .75);
+  g.addColorStop(0, COL.bg1); g.addColorStop(1, COL.bg0);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // parallax dot field
+  const par = .25, sp = 64, ox = (-cam.x * par) % sp, oy = (-cam.y * par) % sp;
+  ctx.fillStyle = 'rgba(142,166,212,0.10)';
+  for (let y = oy - sp; y < H + sp; y += sp) for (let x = ox - sp; x < W + sp; x += sp) {
+    ctx.beginPath(); ctx.arc(x, y, 1.6, 0, 7); ctx.fill();
+  }
+}
+
+function platform() {
+  const x0 = -2.2, y0 = -2.2, x1 = 17.4, y1 = 5.6, th = 0.7;
+  // soft drop shadow under the slab
+  ctx.save(); ctx.filter = 'blur(30px)';
+  poly([[x0 + .6, y0 + .6, -th - .9], [x1 + .9, y0 + .6, -th - .9], [x1 + .9, y1 + .9, -th - .9], [x0 + .6, y1 + .9, -th - .9]], 'rgba(3,8,22,0.55)');
+  ctx.restore();
+  box(x0, y0, -th, x1 - x0, y1 - y0, th, COL.plat, { left: COL.platL, right: COL.platR });
+  // mint rim on the top edges facing camera
+  poly([[x0, y1, 0], [x1, y1, 0], [x1, y0, 0], [x1, y0, -.06], [x1, y1, -.06], [x0, y1, -.06]], rgba(COL.mint, .35));
+  // faint grid
+  ctx.strokeStyle = 'rgba(91,231,196,0.06)'; ctx.lineWidth = 1.2;
+  for (let x = Math.ceil(x0); x <= x1; x++) { const a = P(x, y0, 0), b = P(x, y1, 0); ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke(); }
+  for (let y = Math.ceil(y0); y <= y1; y++) { const a = P(x0, y, 0), b = P(x1, y, 0); ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke(); }
+}
+
+function path(t) {
+  const { x0, x1, y } = PATH, hw = .32;
+  poly([[x0, y - hw, 0], [x1, y - hw, 0], [x1, y + hw, 0], [x0, y + hw, 0]], '#10214a');
+  poly([[x0, y + hw, 0], [x1, y + hw, 0], [x1, y + hw, .03], [x0, y + hw, .03]], rgba(COL.mint, .18));
+  // marching dashes, brighter while data is moving
+  const active = Math.max(seg(t, T.out0 - .3, T.out0) * (1 - seg(t, T.out1, T.out1 + .4)),
+                          seg(t, T.back0 - .3, T.back0) * (1 - seg(t, T.back1, T.back1 + .4)));
+  const dir = t < 8 ? 1 : -1;
+  const off = ((t * 1.2 * dir) % .6 + .6) % .6;
+  ctx.strokeStyle = rgba(COL.mint, .22 + .5 * active); ctx.lineWidth = 4; ctx.lineCap = 'round';
+  for (let x = x0 + off; x < x1 - .1; x += .6) {
+    const a = P(x, y, .01), b = P(Math.min(x + .28, x1), y, .01);
+    ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();
+  }
+}
+
+function shadowEllipse(x, y, rx, ry, a) {
+  onTop(x, y, 0.001, () => {
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 100);
+    g.addColorStop(0, `rgba(3,8,22,${a})`); g.addColorStop(1, 'rgba(3,8,22,0)');
+    ctx.save(); ctx.scale(rx, ry); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 100, 0, 7); ctx.fill(); ctx.restore();
+  });
+}
+
+// ---- terminal --------------------------------------------------------------
+function terminal(t) {
+  const x = 0, y = 0, h = .5;
+  shadowEllipse(1.4, 1.8, 2.1, 2.4, .45);
+  box(x, y, 0, 2.2, 3.0, h, COL.navy, { edge: rgba(COL.mint, .25), edgeW: 2 });
+
+  // receipt printing out of the back after approval
+  const rk = eout(seg(t, T.ok + .35, T.ok + 1.6));
+  if (rk > 0) {
+    const rh = 1.5 * rk;
+    poly([[.45, .12, h], [1.75, .12, h], [1.75, .12, h + rh], [.45, .12, h + rh]], COL.white);
+    poly([[1.75, .02, h], [1.75, .12, h], [1.75, .12, h + rh], [1.75, .02, h + rh]], shade(COL.white, -.2));
+    onFrontY(.45, .12, h + rh, () => {
+      ctx.fillStyle = '#c3d3ec';
+      for (let i = 0; i < 4; i++) { const yy = 22 + i * 18; if (yy < rh * 100 - 8) ctx.fillRect(18, yy, i % 2 ? 60 : 90, 6); }
+      if (rh > 1.1) { ctx.fillStyle = COL.mintDk; ctx.font = '800 16px Inter'; ctx.fillText('PAID', 18, 112); }
+    });
+  }
+
+  // screen
+  onTop(x, y, h, () => {
+    rrect(18, 22, 184, 128, 14); ctx.fillStyle = '#0a1735'; ctx.fill();
+    const ok = seg(t, T.ok, T.ok + .25);
+    ctx.save(); rrect(26, 30, 168, 112, 9); ctx.clip();
+    ctx.fillStyle = '#0f2350'; ctx.fillRect(26, 30, 168, 112);
+    if (ok > 0) { ctx.fillStyle = rgba(COL.mint, ok); ctx.fillRect(26, 30, 168, 112); }
+    const cx = 110, cy = 86;
+    if (t < T.tap + .15) {                                       // "Tap card" + contactless glyph
+      ctx.strokeStyle = COL.mint; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
+      const pulse = .5 + .5 * Math.sin(t * 6);
+      for (let i = 0; i < 3; i++) {
+        ctx.globalAlpha = .45 + .55 * (i === Math.floor(pulse * 3) ? 1 : .4);
+        ctx.beginPath(); ctx.arc(cx - 16, cy - 10, 10 + i * 9, -.75, .75); ctx.stroke();
+      }
+      ctx.globalAlpha = 1; ctx.fillStyle = COL.white; ctx.font = '700 15px Inter'; ctx.textAlign = 'center';
+      ctx.fillText('TAP CARD', cx, cy + 36);
+    } else if (ok < 1) {                                        // processing spinner
+      ctx.globalAlpha = 1 - ok;
+      for (let i = 0; i < 8; i++) {
+        const a = i / 8 * Math.PI * 2 + t * 5;
+        ctx.fillStyle = rgba(COL.mint, .2 + .8 * ((i / 8 + t * .8) % 1));
+        ctx.beginPath(); ctx.arc(cx + Math.cos(a) * 20, cy - 8 + Math.sin(a) * 20, 4.5, 0, 7); ctx.fill();
+      }
+      ctx.fillStyle = COL.muted; ctx.font = '700 13px Inter'; ctx.textAlign = 'center';
+      ctx.fillText('PROCESSING', cx, cy + 38);
+      ctx.globalAlpha = 1;
+    }
+    if (ok > 0) {
+      const k = eback(seg(t, T.ok + .05, T.ok + .45));
+      ctx.fillStyle = '#0f2350'; ctx.beginPath(); ctx.arc(cx, cy - 10, 26 * k, 0, 7); ctx.fill();
+      check(cx, cy - 10, 26, seg(t, T.ok + .2, T.ok + .55), COL.mint, 6);
+      ctx.fillStyle = '#0a1735'; ctx.font = '800 15px Inter'; ctx.textAlign = 'center'; ctx.globalAlpha = seg(t, T.ok + .3, T.ok + .6);
+      ctx.fillText('APPROVED', cx, cy + 38); ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  });
+  // keypad
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
+    const kx = .35 + c * .55, ky = 1.72 + r * .3;
+    const green = r === 3 && c === 2, red = r === 3 && c === 0;
+    box(kx, ky, h, .42, .2, .07, green ? COL.mintDk : red ? '#3b5a9a' : '#2b4c8f');
+  }
+}
+
+// ---- card ------------------------------------------------------------------
+function card(t) {
+  // height above terminal top over time
+  let z;
+  if (t < 1.6) z = lerp(3.6, 1.25, eout(seg(t, .3, 1.6)));
+  else if (t < T.tap) z = lerp(1.25, .56, ein(seg(t, 1.75, T.tap)));
+  else z = lerp(.56, 2.3, eout(seg(t, T.tap, T.tap + 1.3)));
+  const a = seg(t, .3, .7) * (1 - seg(t, 3.1, 3.7));
+  if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha = a;
+  const x = .25, y = .3, w = 1.7, d = 1.08;
+  // shadow on terminal top
+  const sk = clamp(1 - (z - .5) / 3.2);
+  onTop(x, y, .501, () => { ctx.fillStyle = `rgba(3,8,22,${.45 * sk})`; rrect(-6 * (1 - sk), -6 * (1 - sk), 170 + 12 * (1 - sk), 108 + 12 * (1 - sk), 10); ctx.fill(); });
+  const zz = .5 + z;
+  box(x, y, zz, w, d, .07, COL.mint, { left: COL.mintDk, right: shade(COL.mintDk, -.25) });
+  onTop(x, y, zz + .07, () => {
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(90, 0); ctx.lineTo(30, 108); ctx.lineTo(0, 108); ctx.fill();
+    rrect(18, 30, 30, 23, 5); ctx.fillStyle = '#1d3a78'; ctx.fill();               // chip
+    ctx.strokeStyle = '#5be7c4'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(18, 41); ctx.lineTo(48, 41); ctx.moveTo(33, 30); ctx.lineTo(33, 53); ctx.stroke();
+    ctx.strokeStyle = '#1d3a78'; ctx.lineWidth = 3; ctx.lineCap = 'round';      // contactless mark
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(130, 42, 6 + i * 6, -.8, .8); ctx.stroke(); }
+    ctx.fillStyle = '#123066'; ctx.font = '700 12px Inter'; ctx.fillText('••••  ••••  ••••  4821', 18, 82);
+    ctx.font = '600 9px Inter'; ctx.fillStyle = 'rgba(18,48,102,0.75)'; ctx.fillText('A. CUSTOMER', 18, 98);
+  });
+  ctx.restore();
+}
+
+function nfcWaves(t) {
+  const k = seg(t, T.tap - .05, T.tap + 1.1);
+  if (k <= 0 || k >= 1) return;
+  for (let i = 0; i < 3; i++) {
+    const kk = seg(k, i * .18, i * .18 + .6);
+    if (kk <= 0 || kk >= 1) continue;
+    onTop(1.1, .85, .52, () => {
+      ctx.strokeStyle = rgba(COL.mint, (1 - kk) * .9); ctx.lineWidth = 6 * (1 - kk) + 1.5;
+      ctx.beginPath(); ctx.arc(0, 0, 40 + kk * 190, 0, 7); ctx.stroke();
+    });
+  }
+}
+
+// ---- data packet -----------------------------------------------------------
+function packet(t) {
+  let k, back = false;
+  if (t >= T.out0 - .2 && t <= T.out1 + .3) k = eio(seg(t, T.out0, T.out1));
+  else if (t >= T.back0 - .3 && t <= T.back1 + .2) { k = eio(seg(t, T.back0, T.back1)); back = true; }
+  else return;
+  const xs = PATH.x0 + .35, xe = BX + .9;
+  const x = back ? lerp(xe, xs, k) : lerp(xs, xe, k);
+  const appear = back ? seg(t, T.back0 - .3, T.back0) * (1 - seg(k, .93, 1)) : seg(t, T.out0 - .2, T.out0 + .05) * (1 - seg(k, .9, 1));
+  if (appear <= 0) return;
+  const bob = .55 + .08 * Math.sin(t * 9);
+  ctx.save(); ctx.globalAlpha = appear;
+  // trail
+  for (let i = 1; i <= 7; i++) {
+    const tx = x + (back ? 1 : -1) * i * .28, sz = .32 * (1 - i / 9);
+    if ((tx < xs) || (tx > xe)) continue;
+    ctx.globalAlpha = appear * .35 * (1 - i / 8);
+    box(tx - sz / 2, PATH.y - sz / 2, bob + .05, sz, sz, sz, COL.mint, { left: COL.mintDk, right: COL.mintDk });
+  }
+  ctx.globalAlpha = appear;
+  shadowEllipse(x, PATH.y, .55, .55, .5);
+  // glow
+  const [gx, gy] = P(x, PATH.y, bob + .2);
+  const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, 90);
+  g.addColorStop(0, rgba(COL.mint, .45)); g.addColorStop(1, rgba(COL.mint, 0));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx, gy, 90, 0, 7); ctx.fill();
+  const s = .48;
+  box(x - s / 2, PATH.y - s / 2, bob, s, s, s, back ? COL.mintLt : COL.mint, { left: COL.mintDk, right: shade(COL.mintDk, -.25) });
+  onTop(x - s / 2, PATH.y - s / 2, bob + s, () => {
+    if (back) check(24, 24, 22, 1, '#123066', 5);
+    else { ctx.fillStyle = '#123066'; rrect(14, 22, 20, 15, 3); ctx.fill(); ctx.strokeStyle = '#123066'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(24, 21, 6, Math.PI, 0); ctx.stroke(); }
+  });
+  ctx.restore();
+}
+
+// ---- bank ------------------------------------------------------------------
+function bank(t) {
+  const x = BX, y = BY;
+  const busy = seg(t, T.out1 - .1, T.out1 + .3) * (1 - seg(t, T.back0, T.back0 + .6));
+  shadowEllipse(x + 2.6, y + 2.3, 3.6, 3.2, .5);
+  box(x, y, 0, 5, 4.6, .25, '#21417f');
+  box(x + .25, y + .25, .25, 4.5, 4.1, .25, '#26498c');
+  const bx = x + .6, by = y + .45, bw = 3.8, bd = 3.1, bz = .5, bh = 2.0;
+  box(bx, by, bz, bw, bd, bh, '#1b3670', { left: '#173061', right: '#11254d' });
+  // door on facade
+  onFrontY(bx, by + bd, bz + bh, () => {
+    const g = busy;
+    ctx.fillStyle = g > 0 ? `rgba(91,231,196,${.25 + .6 * g})` : '#0e1f45';
+    rrect(150, 80, 80, 120, 8); ctx.fill();
+    ctx.fillStyle = '#0e1f45'; ctx.globalAlpha = 1 - g * .7; ctx.fillRect(188, 86, 4, 114); ctx.globalAlpha = 1;
+  });
+  // side windows
+  onFrontX(bx + bw, by + bd, bz + bh, () => {
+    for (let i = 0; i < 3; i++) {
+      const lit = busy * (.55 + .45 * Math.sin(t * 7 + i * 1.7));
+      ctx.fillStyle = lit > .05 ? `rgba(91,231,196,${.15 + .75 * lit})` : '#0d1d41';
+      rrect(40 + i * 85, 55, 50, 90, 6); ctx.fill();
+    }
+  });
+  // columns along the facade
+  for (let i = 0; i < 5; i++) box(x + .62 + i * .87, by + bd + .2, bz, .36, .36, bh, '#e3edfb', { left: '#b9cbe8', right: '#8ea6d4' });
+  // entablature
+  const ex = x + .35, ey = y + .3, ez = bz + bh, ew = 4.3, ed = 4.0;
+  box(ex, ey, ez, ew, ed, .42, '#2a4f97', { left: '#e3edfb', right: '#b9cbe8' });
+  onFrontY(ex, ey + ed, ez + .42, () => {
+    ctx.fillStyle = '#1d3a78'; ctx.font = '800 26px Inter'; ctx.textAlign = 'center';
+    ctx.letterSpacing = '10px'; ctx.fillText('BANK', 215 + 5, 32); ctx.letterSpacing = '0px';
+  });
+  // pediment (ridge along y)
+  const pz = ez + .42, xr = ex + ew / 2, zr = pz + .85, y0 = ey, y1 = ey + ed;
+  poly([[ex, y0, pz], [xr, y0, zr], [xr, y1, zr], [ex, y1, pz]], '#2f58a6');
+  poly([[xr, y0, zr], [ex + ew, y0, pz], [ex + ew, y1, pz], [xr, y1, zr]], '#1f4185');
+  poly([[ex, y1, pz], [ex + ew, y1, pz], [xr, y1, zr]], '#d3e1f6');
+  onFrontY(xr - .3, y1, pz + .55, () => {          // emblem
+    ctx.fillStyle = busy > 0 ? COL.mint : COL.mintDk;
+    ctx.beginPath(); ctx.arc(30, 22, 17, 0, 7); ctx.fill();
+    ctx.fillStyle = '#123066'; ctx.font = '800 22px Inter'; ctx.textAlign = 'center'; ctx.fillText('$', 30, 30);
+  });
+}
+
+function bankScan(t) {
+  // two rising scan rings around the bank while it checks
+  for (let i = 0; i < 2; i++) {
+    const k = seg(t, 6.25 + i * 1.15, 7.65 + i * 1.15);
+    if (k <= 0 || k >= 1) continue;
+    const z = lerp(.2, 4.2, eio(k)), a = Math.sin(k * Math.PI);
+    onTop(BX + 2.5, BY + 2.3, z, () => {
+      ctx.strokeStyle = rgba(COL.mint, .7 * a); ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(0, 0, 330, 0, 7); ctx.stroke();
+      ctx.fillStyle = rgba(COL.mint, .07 * a); ctx.fill();
+    });
+  }
+}
+
+function checklist(t) {
+  const a = eout(seg(t, 6.25, 6.7)) * (1 - seg(t, 9.25, 9.65));
+  if (a <= 0) return;
+  const [ax, ay] = P(9.9, 3.7, 3.0);
+  const w = 430, h = 236;
+  const lift = (1 - a) * 30;
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(ax - w / 2, ay - h / 2 + lift);
+  ctx.shadowColor = 'rgba(3,8,22,0.5)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 18;
+  rrect(0, 0, w, h, 22); ctx.fillStyle = '#eef6ff'; ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.fillStyle = '#5b75a8'; ctx.font = '700 17px Inter'; ctx.letterSpacing = '2px';
+  ctx.fillText('BANK CHECKS', 30, 44); ctx.letterSpacing = '0px';
+  const items = ['Card is genuine', 'Enough funds', 'No signs of fraud'];
+  items.forEach((s, i) => {
+    const yy = 92 + i * 52, k = seg(t, T.chk[i] - .1, T.chk[i] + .2), pop = eback(seg(t, T.chk[i] - .1, T.chk[i] + .25));
+    ctx.beginPath(); ctx.arc(48, yy - 6, 17, 0, 7); ctx.fillStyle = '#d8e4f6'; ctx.fill();
+    if (k > 0) { ctx.beginPath(); ctx.arc(48, yy - 6, 17 * pop, 0, 7); ctx.fillStyle = COL.mintDk; ctx.fill(); }
+    check(48, yy - 6, 17, seg(t, T.chk[i], T.chk[i] + .22), '#fff', 4);
+    ctx.fillStyle = k > 0 ? '#0f2350' : '#7d92bd'; ctx.font = '600 25px Inter'; ctx.fillText(s, 82, yy + 3);
+  });
+  ctx.restore();
+}
+
+function approvalFx(t) {
+  const k = seg(t, T.ok, T.ok + 1.2);
+  if (k > 0 && k < 1) {
+    onTop(1.1, 1.5, .01, () => {
+      for (let i = 0; i < 2; i++) {
+        const kk = seg(k, i * .2, .8 + i * .2); if (kk <= 0 || kk >= 1) continue;
+        ctx.strokeStyle = rgba(COL.mint, (1 - kk) * .8); ctx.lineWidth = 10 * (1 - kk) + 2;
+        ctx.beginPath(); ctx.arc(0, 0, 160 + eout(kk) * 260, 0, 7); ctx.stroke();
+      }
+    });
+  }
+  // confetti
+  const ck = t - T.ok - .15;
+  if (ck > 0 && ck < 2.2) {
+    const r = rand(7);
+    for (let i = 0; i < 46; i++) {
+      const ang = r() * Math.PI * 2, sp = 1.2 + r() * 2.2, vz = 4.5 + r() * 3.5, rot = r() * 6, col = r();
+      const delay = r() * .15, tt = Math.max(0, ck - delay);
+      const px = 1.1 + Math.cos(ang) * sp * tt, py = .85 + Math.sin(ang) * sp * tt, pz = .6 + vz * tt - 6.5 * tt * tt;
+      if (pz < 0 || tt <= 0) continue;
+      const [sx, sy] = P(px, py, pz);
+      ctx.save(); ctx.translate(sx, sy); ctx.rotate(rot + tt * 8 * (i % 2 ? 1 : -1));
+      ctx.globalAlpha = 1 - seg(ck, 1.5, 2.2);
+      ctx.fillStyle = col < .55 ? COL.mint : col < .8 ? COL.white : COL.mintLt;
+      ctx.fillRect(-7, -4, 14, 8 * Math.abs(Math.cos(tt * 9 + i)) + 2);
+      ctx.restore();
+    }
+  }
+}
+
+// ---- screen-space overlays -------------------------------------------------
+const STEPS = [
+  { a: .6, b: 3.4, n: '01', title: 'Tap your card', sub: 'The chip creates a one-time code for this payment' },
+  { a: 3.4, b: 6.2, n: '02', title: 'The terminal sends it on', sub: 'An encrypted request travels through the card network' },
+  { a: 6.2, b: 11.4, n: '03', title: 'Your bank checks it', sub: 'Is the card real? Is there money? Does it look like you?' },
+  { a: 11.4, b: 15.5, n: '04', title: 'Approved', sub: 'The answer comes back. The whole trip takes about two seconds.' },
+];
+function overlays(t) {
+  // title
+  const ta = seg(t, .2, .9);
+  ctx.globalAlpha = ta;
+  ctx.fillStyle = COL.mint; ctx.font = '700 22px Inter'; ctx.letterSpacing = '5px';
+  ctx.fillText('HOW A CARD PAYMENT WORKS', 110, 112); ctx.letterSpacing = '0px';
+  // progress
+  for (let i = 0; i < 4; i++) {
+    const s = STEPS[i], k = seg(t, s.a, s.b);
+    rrect(110 + i * 74, 134, 62, 6, 3); ctx.fillStyle = 'rgba(142,166,212,0.25)'; ctx.fill();
+    if (k > 0) { rrect(110 + i * 74, 134, 62 * k, 6, 3); ctx.fillStyle = COL.mint; ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+  // step captions (slide + fade)
+  for (const s of STEPS) {
+    const inK = eout(seg(t, s.a, s.a + .45)), outK = seg(t, s.b - .3, s.b);
+    const a = inK * (1 - outK); if (a <= 0) continue;
+    const dy = (1 - inK) * 26 - outK * 18;
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(110, 880 + dy);
+    rrect(0, -44, 74, 50, 14); ctx.fillStyle = COL.mint; ctx.fill();
+    ctx.fillStyle = '#0a1735'; ctx.font = '800 28px Inter'; ctx.textAlign = 'center'; ctx.fillText(s.n, 37, -8);
+    ctx.textAlign = 'left'; ctx.fillStyle = COL.white; ctx.font = '700 56px Inter'; ctx.fillText(s.title, 100, 0);
+    ctx.fillStyle = COL.muted; ctx.font = '500 28px Inter'; ctx.fillText(s.sub, 100, 52);
+    ctx.restore();
+  }
+}
+
+// ---- frame -----------------------------------------------------------------
+function renderAt(t) {
+  t = clamp(t, 0, DUR);
+  const cam = camera(t);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  background(t, cam);
+  ctx.setTransform(cam.z, 0, 0, cam.z, W / 2 - cam.x * cam.z, H * .5 - cam.y * cam.z);
+  platform();
+  path(t);
+  terminal(t);
+  nfcWaves(t);
+  card(t);
+  packet(t);
+  bank(t);
+  bankScan(t);
+  approvalFx(t);
+  checklist(t);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // vignette
+  const v = ctx.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, W * .72);
+  v.addColorStop(0, 'rgba(5,10,26,0)'); v.addColorStop(1, 'rgba(5,10,26,0.55)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  const sc = ctx.createLinearGradient(0, 700, 0, H);
+  sc.addColorStop(0, 'rgba(5,10,26,0)'); sc.addColorStop(1, 'rgba(5,10,26,0.6)');
+  ctx.fillStyle = sc; ctx.fillRect(0, 700, W, H - 700);
+  const st = ctx.createLinearGradient(0, 0, 0, 240);
+  st.addColorStop(0, 'rgba(5,10,26,0.55)'); st.addColorStop(1, 'rgba(5,10,26,0)');
+  ctx.fillStyle = st; ctx.fillRect(0, 0, W, 240);
+  overlays(t);
+  const fade = Math.max(1 - seg(t, 0, .45), seg(t, DUR - .45, DUR));
+  if (fade > 0) { ctx.fillStyle = `rgba(7,15,34,${fade})`; ctx.fillRect(0, 0, W, H); }
+}
+window.renderAt = renderAt;
+window.DUR = DUR;
+
+// ---- live preview ----------------------------------------------------------
+const renderMode = new URLSearchParams(location.search).has('render');
+window.ready = document.fonts.load('700 20px Inter').then(() => document.fonts.ready);
+if (renderMode) document.body.classList.add('render');
+else window.ready.then(() => {
+  let start = performance.now();
+  document.getElementById('replay').onclick = () => { start = performance.now(); };
+  (function loop(now) { renderAt((now - start) / 1000); requestAnimationFrame(loop); })(performance.now());
+});
+</script>
+</body>
+</html>
