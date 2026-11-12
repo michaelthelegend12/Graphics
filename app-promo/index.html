@@ -1,0 +1,358 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#ece6ff;font-family:'Inter','Inter Display',sans-serif;color:#14152b}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;background:linear-gradient(135deg,#ece6ff 0%,#ffe6ef 52%,#dcefff 100%)}
+.blob{position:absolute;width:1300px;height:1300px;border-radius:50%}
+#b1{left:-300px;top:-420px;background:radial-gradient(circle,rgba(167,139,250,.55) 0%,rgba(167,139,250,0) 62%)}
+#b2{left:900px;top:-300px;background:radial-gradient(circle,rgba(125,200,255,.55) 0%,rgba(125,200,255,0) 62%)}
+#b3{left:300px;top:380px;background:radial-gradient(circle,rgba(255,168,196,.55) 0%,rgba(255,168,196,0) 62%)}
+#b4{left:1100px;top:480px;background:radial-gradient(circle,rgba(255,210,170,.5) 0%,rgba(255,210,170,0) 62%)}
+#glow{position:absolute;width:1000px;height:1000px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.85) 0%,rgba(255,255,255,0) 65%)}
+#word{position:absolute;left:0;top:0;width:1920px;height:1080px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#word .big{font-size:400px;font-weight:700;letter-spacing:-.05em;line-height:1;color:rgba(255,255,255,.92);text-shadow:0 30px 80px rgba(120,90,220,.28)}
+#word .intro{position:absolute;top:150px;font-size:26px;font-weight:600;letter-spacing:.34em;color:#7b6cf0}
+#floor{position:absolute;width:440px;height:60px;background:radial-gradient(ellipse at center,rgba(70,45,150,.42) 0%,rgba(70,45,150,0) 70%)}
+#world{position:absolute;left:0;top:0;width:1920px;height:1080px;perspective:2400px;perspective-origin:50% 50%}
+#phone{position:absolute;left:760px;top:110px;width:400px;height:820px;transform-style:preserve-3d}
+.layer{position:absolute;left:0;top:0;width:400px;height:820px;border-radius:68px}
+#front{position:absolute;left:0;top:0;width:400px;height:820px;border-radius:68px;background:#0a0a0d;box-shadow:inset 0 0 0 2px #7b7e8a,inset 0 0 0 6px #14151a;transform:translateZ(18px)}
+#back{position:absolute;left:0;top:0;width:400px;height:820px;border-radius:68px;background:linear-gradient(145deg,#4a4d58,#202127);transform:translateZ(-18px) rotateY(180deg)}
+#screen{position:absolute;left:14px;top:14px;width:372px;height:792px;border-radius:54px;overflow:hidden;background:#f4f5fb}
+#track{position:absolute;left:0;top:0;width:1860px;height:792px}
+.scr{position:absolute;top:0;width:372px;height:792px;overflow:hidden}
+.a{position:absolute}
+.card{background:#fff;box-shadow:0 8px 24px rgba(60,50,130,.09),0 1px 3px rgba(60,50,130,.07)}
+#status{position:absolute;left:0;top:0;width:372px;height:54px;font-weight:600;font-size:15px}
+#island{position:absolute;left:131px;top:12px;width:110px;height:32px;border-radius:16px;background:#050507}
+#homebar{position:absolute;left:119px;top:776px;width:134px;height:5px;border-radius:3px}
+#sheen{position:absolute;left:0;top:0;width:372px;height:792px;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.26) 46%,rgba(255,255,255,0) 62%);background-size:260% 100%}
+.chip{position:absolute;left:65px;top:372px;width:270px;height:76px;border-radius:22px;background:rgba(255,255,255,.86);border:1px solid rgba(255,255,255,.95);box-shadow:0 28px 60px rgba(70,50,150,.24),0 4px 14px rgba(70,50,150,.1);display:flex;align-items:center;gap:14px;padding:0 18px;opacity:0}
+.chip .ic{width:44px;height:44px;border-radius:14px;flex:none;display:flex;align-items:center;justify-content:center}
+.chip .t1{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.chip .t2{font-size:13.5px;color:#6b6d8a;margin-top:2px}
+#caps{position:absolute;left:150px;top:0;width:900px}
+.cap{position:absolute;left:0;width:900px}
+.cap .eyebrow{font-size:22px;font-weight:600;letter-spacing:.2em;color:#7b6cf0;margin-bottom:26px}
+.cap h1{font-size:90px;font-weight:700;letter-spacing:-.04em;line-height:1.04;color:#14152b}
+.cap .grad{background:linear-gradient(90deg,#6c5ce7,#e86fb0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cap p{font-size:34px;font-weight:400;color:#5b5d7a;margin-top:30px;letter-spacing:-.01em}
+#fade{position:absolute;left:0;top:0;width:1920px;height:1080px;background:linear-gradient(135deg,#ece6ff 0%,#ffe6ef 52%,#dcefff 100%);opacity:1}
+#grain{position:absolute;left:0;top:0;width:1920px;height:1080px;opacity:.07;mix-blend-mode:overlay;pointer-events:none}
+</style></head><body>
+<div id="stage">
+  <div class="blob" id="b1"></div><div class="blob" id="b2"></div><div class="blob" id="b3"></div><div class="blob" id="b4"></div>
+  <div id="glow"></div>
+  <div id="word"><div class="intro" id="intro">INTRODUCING</div><div class="big" id="bigword">Lumen</div></div>
+  <div id="caps"></div>
+  <div id="floor"></div>
+  <div id="world"><div id="phone"></div></div>
+  <div id="grain"></div>
+  <div id="fade"></div>
+</div>
+<script>
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const prog=(t,a,b)=>clamp((t-a)/(b-a));
+const eIO=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const eIO5=x=>x<.5?16*x*x*x*x*x:1-Math.pow(-2*x+2,5)/2;
+const eIO4=x=>x<.5?8*x*x*x*x:1-Math.pow(-2*x+2,4)/2;
+const eO3=x=>1-Math.pow(1-x,3);
+const eO4=x=>1-Math.pow(1-x,4);
+const eO5=x=>1-Math.pow(1-x,5);
+const eBack=x=>{const c1=1.9,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)};
+const lerp=(a,b,x)=>a+(b-a)*x;
+const $=s=>document.querySelector(s);
+const money=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+/* ---------- noise tile (dithers gradients so h264 doesn't band) ---------- */
+(()=>{const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');const id=g.createImageData(256,256);
+ let s=12345;for(let i=0;i<id.data.length;i+=4){s=(s*1664525+1013904223)>>>0;const v=(s>>>24);id.data[i]=id.data[i+1]=id.data[i+2]=v;id.data[i+3]=255}
+ g.putImageData(id,0,0);$('#grain').style.backgroundImage=`url(${c.toDataURL()})`;})();
+
+/* ---------- phone body ---------- */
+const phone=$('#phone');
+const N=17;
+for(let i=0;i<N;i++){
+  const d=document.createElement('div');d.className='layer';
+  const z=(i-(N-1)/2)*2;
+  const m=1-Math.abs((i-(N-1)/2)/((N-1)/2));
+  const c=Math.round(52+m*46);
+  d.style.transform=`translateZ(${z}px)`;
+  d.style.background=`linear-gradient(145deg,rgb(${c+28},${c+30},${c+38}),rgb(${c-14},${c-14},${c-8}))`;
+  phone.appendChild(d);
+}
+phone.insertAdjacentHTML('beforeend',`<div id="back"></div>
+<div id="front"><div id="screen">
+  <div id="track"></div>
+  <div id="status"><div class="a" id="clock" style="left:34px;top:15px">9:41</div>
+   <svg class="a" id="sig" style="right:30px;top:19px" width="62" height="14" viewBox="0 0 62 14">
+    <rect x="0" y="8" width="3.4" height="5" rx="1" fill="currentColor"/><rect x="5.5" y="5.5" width="3.4" height="7.5" rx="1" fill="currentColor"/><rect x="11" y="3" width="3.4" height="10" rx="1" fill="currentColor"/><rect x="16.5" y="0" width="3.4" height="13" rx="1" fill="currentColor"/>
+    <rect x="27" y="1" width="26" height="12" rx="3.6" fill="none" stroke="currentColor" stroke-opacity=".45"/><rect x="29" y="3" width="18" height="8" rx="2" fill="currentColor"/><rect x="55" y="5" width="2.2" height="4" rx="1" fill="currentColor" fill-opacity=".5"/></svg></div>
+  <div id="island"></div><div id="homebar"></div><div id="sheen"></div>
+</div></div>`);
+
+/* ---------- icons ---------- */
+const ico=(p,c='#6c5ce7',s=24)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const I={
+ send:p=>ico('<path d="M7 17L17 7M9 7h8v8"/>',p),
+ recv:p=>ico('<path d="M17 7L7 17M15 17H7V9"/>',p),
+ plus:p=>ico('<path d="M12 5v14M5 12h14"/>',p),
+ grid:p=>ico('<rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/>',p),
+ bell:p=>ico('<path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15zM10 21h4"/>',p,22),
+ snow:p=>ico('<path d="M12 3v18M4.5 7.5l15 9M19.5 7.5l-15 9"/>',p),
+ eye:p=>ico('<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',p),
+ gauge:p=>ico('<path d="M4 18a8 8 0 1116 0"/><path d="M12 18l4-5"/>',p),
+ check:p=>ico('<path d="M5 12.5l4.5 4.5L19 7.5"/>',p),
+ tap:p=>ico('<path d="M8 8a6 6 0 010 8M12 5.5a10 10 0 010 13M16 3a14 14 0 010 18"/>',p),
+ trend:p=>ico('<path d="M4 16l5-5 4 4 7-8M15 7h5v5"/>',p),
+ bag:p=>ico('<path d="M5 8h14l-1 12H6zM9 8a3 3 0 016 0"/>',p),
+};
+
+/* ---------- screens ---------- */
+const avatar=(l,a,b,sz=56,fs=20)=>`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:linear-gradient(135deg,${a},${b});color:#fff;font-weight:700;font-size:${fs}px;display:flex;align-items:center;justify-content:center">${l}</div>`;
+const row=(i,l,bg,fg,name,sub,amt,pos)=>`<div class="a card" style="left:22px;top:${530+i*68}px;width:328px;height:58px;border-radius:18px"><div class="a" style="left:10px;top:10px;width:38px;height:38px;border-radius:12px;background:${bg};color:${fg};font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center">${l}</div><div class="a" style="left:58px;top:11px;font-size:15px;font-weight:600">${name}</div><div class="a" style="left:58px;top:31px;font-size:12.5px;color:#7a7c96">${sub}</div><div class="a" style="right:14px;top:19px;font-size:15px;font-weight:700;color:${pos?'#0f9f6e':'#14152b'};font-variant-numeric:tabular-nums">${amt}</div></div>`;
+
+const S1=`<div class="scr" style="background:linear-gradient(180deg,#f8f6ff,#f0f2fb)">
+ <div class="a" style="left:22px;top:66px">${avatar('A','#8b7cf6','#f472b6',42,18)}</div>
+ <div class="a" style="left:74px;top:68px"><div style="font-size:13px;color:#7a7c96">Good morning</div><div style="font-size:18px;font-weight:700;margin-top:1px">Alex Morgan</div></div>
+ <div class="a card" style="right:22px;top:66px;width:42px;height:42px;border-radius:21px;display:flex;align-items:center;justify-content:center">${I.bell('#14152b')}</div>
+ <div class="a" style="left:22px;top:136px;font-size:15px;color:#7a7c96;font-weight:500">Total balance</div>
+ <div class="a" id="bal" style="left:22px;top:158px;font-size:54px;font-weight:700;letter-spacing:-.035em;font-variant-numeric:tabular-nums;line-height:1">$0.00</div>
+ <div class="a" style="left:22px;top:228px;padding:6px 12px;border-radius:99px;background:rgba(52,211,153,.17);color:#0c9a69;font-size:14px;font-weight:700">↗ 2.4% this month</div>
+ <svg class="a" style="left:22px;top:272px" width="328" height="104" viewBox="0 0 328 104">
+  <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b7cf6" stop-opacity=".35"/><stop offset="1" stop-color="#8b7cf6" stop-opacity="0"/></linearGradient>
+  <linearGradient id="sl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c6cf0"/><stop offset="1" stop-color="#f472b6"/></linearGradient>
+  <clipPath id="cp"><rect id="cpr" x="0" y="0" width="0" height="104"/></clipPath></defs>
+  <path id="sarea" d="" fill="url(#sg)" clip-path="url(#cp)"/>
+  <path id="sline" d="" fill="none" stroke="url(#sl)" stroke-width="3.5" stroke-linecap="round" clip-path="url(#cp)"/>
+  <circle id="sdot" r="6" fill="#fff" stroke="#f472b6" stroke-width="3.5" cx="0" cy="0"/></svg>
+ ${['Send','Request','Add','More'].map((l,i)=>`<div class="a" style="left:${22+i*89}px;top:394px;width:60px;text-align:center"><div class="card" style="width:60px;height:60px;border-radius:20px;display:flex;align-items:center;justify-content:center">${[I.send,I.recv,I.plus,I.grid][i]('#6c5ce7',26)}</div><div style="font-size:12.5px;color:#4a4c68;margin-top:8px;font-weight:500">${l}</div></div>`).join('')}
+ <div class="a" style="left:22px;top:490px;font-size:18px;font-weight:700">Recent</div><div class="a" style="right:22px;top:493px;font-size:13.5px;font-weight:600;color:#7b6cf0">See all</div>
+ ${row(0,'M','#ffe9d8','#e5762f','Morning Brew Cafe','Coffee · 8:12 AM','−$6.50',false)}
+ ${row(1,'N','#dcf7ec','#0c9a69','Northwind Payroll','Salary · Today','+$4,200.00',true)}
+ ${row(2,'S','#e8e4ff','#6c5ce7','Streamly','Subscription','−$11.99',false)}
+</div>`;
+
+const S2=`<div class="scr" style="background:linear-gradient(180deg,#f8f6ff,#f0f2fb)">
+ <div class="a" style="left:22px;top:64px;font-size:34px;font-weight:700;letter-spacing:-.03em">Cards</div>
+ <div class="a card" style="right:22px;top:68px;width:42px;height:42px;border-radius:21px;display:flex;align-items:center;justify-content:center">${I.plus('#14152b',22)}</div>
+ <div class="a" id="cardwrap" style="left:28px;top:134px;width:316px;height:200px;perspective:900px">
+  <div id="cardshadow" class="a" style="left:40px;top:50px;width:236px;height:140px;border-radius:24px;background:rgba(91,75,220,.32);filter:blur(18px)"></div>
+  <div id="cardin" class="a" style="left:0;top:0;width:316px;height:200px;transform-style:preserve-3d">
+   <div class="a" style="inset:0;border-radius:20px;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:linear-gradient(135deg,#5546d8 0%,#8b5cf6 45%,#f472b6 100%);overflow:hidden;color:#fff">
+    <div class="a" id="csheen" style="inset:0;background:linear-gradient(110deg,rgba(255,255,255,0) 35%,rgba(255,255,255,.32) 50%,rgba(255,255,255,0) 65%);background-size:300% 100%"></div>
+    <div class="a" style="right:-60px;top:-80px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.28),rgba(255,255,255,0) 65%)"></div>
+    <div class="a" style="left:22px;top:20px;font-size:22px;font-weight:700;letter-spacing:-.03em">lumen</div>
+    <div class="a" style="right:22px;top:22px">${ico('<path d="M8 8a6 6 0 010 8M12 5.5a10 10 0 010 13M16 3a14 14 0 010 18"/>','#fff',26)}</div>
+    <div class="a" style="left:22px;top:70px;width:44px;height:34px;border-radius:7px;background:linear-gradient(135deg,#ffe9a8,#e8b85a);box-shadow:inset 0 0 0 1px rgba(120,80,0,.25)"><div class="a" style="left:0;top:11px;width:44px;height:1px;background:rgba(120,80,0,.3)"></div><div class="a" style="left:0;top:22px;width:44px;height:1px;background:rgba(120,80,0,.3)"></div><div class="a" style="left:15px;top:0;width:1px;height:34px;background:rgba(120,80,0,.3)"></div><div class="a" style="left:29px;top:0;width:1px;height:34px;background:rgba(120,80,0,.3)"></div></div>
+    <div class="a" style="left:22px;top:122px;font-size:19px;font-weight:600;letter-spacing:.14em;font-variant-numeric:tabular-nums">•••• •••• •••• 4821</div>
+    <div class="a" style="left:22px;top:162px;font-size:12.5px;font-weight:600;letter-spacing:.1em;opacity:.92">ALEX MORGAN</div>
+    <div class="a" style="left:160px;top:162px;font-size:12.5px;font-weight:600;letter-spacing:.08em;opacity:.92">12/29</div>
+    <div class="a" style="right:22px;top:156px;font-size:20px;font-weight:700;font-style:italic;letter-spacing:-.02em">debit</div>
+   </div>
+   <div class="a" style="inset:0;border-radius:20px;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);background:linear-gradient(135deg,#1c1c33,#34315f);overflow:hidden;color:#fff">
+    <div class="a" style="left:0;top:26px;width:316px;height:42px;background:#08080f"></div>
+    <div class="a" style="left:22px;top:86px;width:200px;height:34px;background:#f4f4f8;border-radius:4px;color:#2b2b55;font-family:'Poppins','Inter',sans-serif;font-style:italic;font-size:19px;padding:5px 12px">Alex Morgan</div>
+    <div class="a" style="left:230px;top:86px;width:64px;height:34px;background:#fff;border-radius:4px;color:#14152b;font-weight:700;font-size:17px;letter-spacing:.1em;display:flex;align-items:center;justify-content:center">482</div>
+    <div class="a" style="left:22px;top:136px;font-size:15px;font-weight:600;letter-spacing:.12em;font-variant-numeric:tabular-nums">4821 5530 1297 6044</div>
+    <div class="a" style="left:22px;top:166px;width:272px;font-size:9.5px;line-height:1.4;opacity:.6">Issued by Lumen Bank. A fictional card for demonstration. Not valid for payment.</div>
+   </div>
+  </div>
+ </div>
+ ${[['Freeze',I.snow],['Details',I.eye],['Limits',I.gauge]].map((x,i)=>`<div class="a card" style="left:${22+i*112}px;top:364px;width:104px;height:78px;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px">${x[1]('#6c5ce7',24)}<div style="font-size:13px;font-weight:600">${x[0]}</div></div>`).join('')}
+ <div class="a card" style="left:22px;top:462px;width:328px;height:92px;border-radius:22px">
+  <div class="a" style="left:18px;top:16px;font-size:15px;font-weight:700">Monthly limit</div>
+  <div class="a" style="right:18px;top:17px;font-size:14px;color:#7a7c96;font-weight:500"><span id="limused" style="color:#14152b;font-weight:700">$0</span> of $2,000</div>
+  <div class="a" style="left:18px;top:52px;width:292px;height:10px;border-radius:5px;background:#ebeaf6"><div id="limbar" style="width:0;height:10px;border-radius:5px;background:linear-gradient(90deg,#7c6cf0,#f472b6)"></div></div>
+  <div class="a" style="left:18px;top:68px;font-size:12px;color:#7a7c96">Resets in 11 days</div></div>
+ <div class="a card" style="left:22px;top:572px;width:328px;height:156px;border-radius:22px">
+  ${[['Online payments',1],['Contactless',1],['ATM withdrawals',0]].map((x,i)=>`<div class="a" style="left:18px;top:${i*52}px;width:292px;height:52px;display:flex;align-items:center;justify-content:space-between;${i<2?'border-bottom:1px solid #eeeef6;':''}font-size:15px;font-weight:600">${x[0]}<div style="width:44px;height:26px;border-radius:13px;background:${x[1]?'#7c6cf0':'#dcdcea'};position:relative"><div style="position:absolute;top:3px;${x[1]?'right':'left'}:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2)"></div></div></div>`).join('')}
+ </div>
+</div>`;
+
+const BARS=[.46,.62,.4,.78,1,.55,.7];
+const S3=`<div class="scr" style="background:linear-gradient(180deg,#f8f6ff,#f0f2fb)">
+ <div class="a" style="left:22px;top:64px;font-size:34px;font-weight:700;letter-spacing:-.03em">Insights</div>
+ <div class="a" style="left:22px;top:114px;width:328px;height:38px;border-radius:13px;background:#e8e9f5;display:flex;padding:3px;font-size:13.5px;font-weight:600;color:#7a7c96">
+  <div style="flex:1;text-align:center;line-height:32px">Week</div><div style="flex:1;text-align:center;line-height:32px;background:#fff;border-radius:10px;color:#14152b;box-shadow:0 2px 8px rgba(60,50,130,.14)">Month</div><div style="flex:1;text-align:center;line-height:32px">Year</div></div>
+ <div class="a" style="left:22px;top:170px;font-size:15px;color:#7a7c96;font-weight:500">Spent this month</div>
+ <div class="a" id="spent" style="left:22px;top:192px;font-size:46px;font-weight:700;letter-spacing:-.035em;font-variant-numeric:tabular-nums;line-height:1">$0</div>
+ <div class="a" style="left:22px;top:248px;padding:5px 12px;border-radius:99px;background:rgba(52,211,153,.17);color:#0c9a69;font-size:13.5px;font-weight:700">↓ 12% vs last month</div>
+ ${[0,1,2].map(i=>`<div class="a" style="left:22px;top:${312+i*75}px;width:328px;border-top:1px dashed #dcdcec"></div>`).join('')}
+ ${BARS.map((h,i)=>`<div class="a bar" style="left:${22+i*49}px;top:312px;width:34px;height:150px"><div class="a" style="left:0;bottom:0;width:34px;height:0;border-radius:11px;background:${i==4?'linear-gradient(180deg,#e86fb0,#7c6cf0)':'linear-gradient(180deg,#cfc8fb,#b9b0f6)'}"></div></div>`).join('')}
+ ${'MTWTFSS'.split('').map((l,i)=>`<div class="a" style="left:${22+i*49}px;top:470px;width:34px;text-align:center;font-size:12.5px;color:#7a7c96;font-weight:600">${l}</div>`).join('')}
+ <div class="a" id="tip" style="left:${22+4*49+17-30}px;top:268px;width:60px;height:30px;border-radius:10px;background:#14152b;color:#fff;font-size:13.5px;font-weight:700;text-align:center;line-height:30px;opacity:0">$182</div>
+ ${[['Food & Drink','$1,220',38,'#7c6cf0'],['Travel','$771',24,'#e86fb0'],['Shopping','$675',21,'#38bdf8']].map((x,i)=>`<div class="a card" style="left:22px;top:${510+i*74}px;width:328px;height:64px;border-radius:20px"><div class="a" style="left:16px;top:14px;width:10px;height:10px;border-radius:50%;background:${x[3]}"></div><div class="a" style="left:36px;top:9px;font-size:15px;font-weight:700">${x[0]}</div><div class="a" style="right:16px;top:9px;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums">${x[1]}</div><div class="a" style="left:16px;top:42px;width:296px;height:8px;border-radius:4px;background:#ebeaf6"><div class="catfill" data-w="${x[2]*2.2}" style="width:0;height:8px;border-radius:4px;background:${x[3]}"></div></div></div>`).join('')}
+</div>`;
+
+const S4=`<div class="scr" style="background:linear-gradient(180deg,#f8f6ff,#f0f2fb)">
+ <div class="a" style="left:22px;top:64px;font-size:34px;font-weight:700;letter-spacing:-.03em">Send money</div>
+ ${[['M','#f472b6','#fb923c','Maya'],['J','#38bdf8','#6366f1','Jonas'],['P','#34d399','#14b8a6','Priya'],['L','#a78bfa','#7c6cf0','Leo']].map((x,i)=>`<div class="a" style="left:${22+i*80}px;top:130px;width:64px;text-align:center"><div style="position:relative;width:64px;height:64px">${i==0?'<div id="ring" class="a" style="left:-4px;top:-4px;width:72px;height:72px;border-radius:50%;border:3px solid #7c6cf0;opacity:0"></div>':''}<div class="a" style="left:4px;top:4px">${avatar(x[0],x[1],x[2],56,22)}</div></div><div style="font-size:12.5px;font-weight:600;margin-top:5px;color:#4a4c68">${x[3]}</div></div>`).join('')}
+ <div class="a" style="left:22px;top:268px;width:328px;text-align:center;font-size:66px;font-weight:700;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1" id="amt">$0.00</div>
+ <div class="a" style="left:22px;top:352px;width:328px;text-align:center;font-size:14.5px;color:#7a7c96;font-weight:500">to <b style="color:#14152b">Maya Chen</b> · Instant, no fees</div>
+ ${['$50','$100','$250','$500'].map((l,i)=>`<div class="a" style="left:${34+i*78}px;top:394px;width:70px;height:36px;border-radius:18px;text-align:center;line-height:36px;font-size:14px;font-weight:700;${i==2?'background:#14152b;color:#fff':'background:#fff;color:#4a4c68;box-shadow:0 2px 8px rgba(60,50,130,.08)'}">${l}</div>`).join('')}
+ <div class="a card" style="left:22px;top:462px;width:328px;height:74px;border-radius:22px">
+  <div class="a" style="left:14px;top:15px;width:62px;height:44px;border-radius:9px;background:linear-gradient(135deg,#5546d8,#f472b6)"></div>
+  <div class="a" style="left:90px;top:16px;font-size:15px;font-weight:700">Lumen Debit</div><div class="a" style="left:90px;top:38px;font-size:13px;color:#7a7c96">•••• 4821 · Available $24,860</div></div>
+ <div class="a" id="ring1" style="left:186px;top:620px;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;border:3px solid #34d399;opacity:0"></div>
+ <div class="a" id="ring2" style="left:186px;top:620px;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;border:3px solid #34d399;opacity:0"></div>
+ <div class="a" id="sendbtn" style="left:22px;top:590px;width:328px;height:60px;border-radius:30px;background:linear-gradient(90deg,#6c5ce7,#a06cf2 60%,#e86fb0);box-shadow:0 14px 30px rgba(108,92,231,.38);color:#fff;font-size:17px;font-weight:700;text-align:center;line-height:60px;overflow:hidden">
+   <span id="sendtxt">Send $250.00</span>
+   <svg class="a" style="left:15px;top:15px" width="30" height="30" viewBox="0 0 30 30"><path id="chk" d="M7 15.5l5.5 5.5L23 9.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg></div>
+ <div class="a" id="sentmsg" style="left:22px;top:672px;width:328px;text-align:center;font-size:15px;font-weight:600;color:#0c9a69;opacity:0">Sent to Maya Chen</div>
+</div>`;
+
+const S5=`<div class="scr" style="background:linear-gradient(165deg,#5b4bdc 0%,#9a6cf5 42%,#f472b6 78%,#ffc29a 100%)">
+ <div class="a" id="orbglow" style="left:86px;top:236px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.55),rgba(255,255,255,0) 68%)"></div>
+ <div class="a" id="orb" style="left:136px;top:286px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0%,#fff6ee 45%,#ffd9c2 100%);box-shadow:0 0 60px rgba(255,255,255,.7)"></div>
+ <div class="a" id="s5word" style="left:0;top:430px;width:372px;text-align:center;color:#fff;font-size:50px;font-weight:700;letter-spacing:-.04em">Lumen</div>
+ <div class="a" id="s5tag" style="left:0;top:496px;width:372px;text-align:center;color:rgba(255,255,255,.85);font-size:16px;font-weight:500">Banking, beautifully simple.</div>
+ <div class="a" id="s5btn" style="left:96px;top:640px;width:180px;height:50px;border-radius:25px;background:#fff;color:#6c5ce7;font-size:16px;font-weight:700;text-align:center;line-height:50px;box-shadow:0 12px 30px rgba(40,20,120,.25)">Get started</div>
+</div>`;
+
+const track=$('#track');
+track.innerHTML=[S1,S2,S3,S4,S5].map((s,i)=>s.replace('<div class="scr"',`<div class="scr" style="left:${i*372}px"`).replace('class="scr" style="left:'+i*372+'px" style="','class="scr" style="left:'+i*372+'px;')).join('');
+
+/* ---------- spark path ---------- */
+const PTS=[[0,84],[40,70],[82,78],[124,50],[170,60],[218,32],[268,40],[328,10]];
+function cr(pts){let d=`M${pts[0][0]},${pts[0][1]}`;for(let i=0;i<pts.length-1;i++){const p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(pts.length-1,i+2)];
+ d+=` C${p1[0]+(p2[0]-p0[0])/6},${p1[1]+(p2[1]-p0[1])/6} ${p2[0]-(p3[0]-p1[0])/6},${p2[1]-(p3[1]-p1[1])/6} ${p2[0]},${p2[1]}`}return d}
+const lineD=cr(PTS);
+$('#sline').setAttribute('d',lineD);
+$('#sarea').setAttribute('d',lineD+' L328,104 L0,104 Z');
+const sline=$('#sline'),SLEN=sline.getTotalLength();
+
+/* ---------- chips ---------- */
+const CH=[
+ {a:4.5,b:6.4,x:312,y:-250,z:110,ic:`<div class="ic" style="background:#dcf7ec">${I.recv('#0c9a69')}</div>`,t1:'Salary received',t2:'+$4,200.00 · Northwind'},
+ {a:8.9,b:10.0,x:-312,y:250,z:120,ic:`<div class="ic" style="background:#e8e4ff">${I.tap('#6c5ce7')}</div>`,t1:'Tap to pay ready',t2:'Contactless is on'},
+ {a:12.0,b:13.75,x:312,y:230,z:110,ic:`<div class="ic" style="background:#dcf7ec">${I.trend('#0c9a69')}</div>`,t1:'12% under budget',t2:'Nice work this month'},
+ {a:16.5,b:17.55,x:-312,y:-210,z:120,ic:`<div class="ic" style="background:#dcf7ec">${I.check('#0c9a69')}</div>`,t1:'Maya received $250',t2:'Delivered instantly'},
+];
+CH.forEach((c,i)=>{phone.insertAdjacentHTML('beforeend',`<div class="chip" id="chip${i}">${c.ic}<div><div class="t1">${c.t1}</div><div class="t2">${c.t2}</div></div></div>`)});
+
+/* ---------- captions ---------- */
+const CAPS=[
+ {a:2.95,b:6.25,top:372,e:'OVERVIEW',h:'Your money,<br><span class="grad">at a glance.</span>',p:'Balances that update in real time.'},
+ {a:6.6,b:10.0,top:372,e:'CARDS',h:'Your card.<br><span class="grad">Your rules.</span>',p:'Freeze, limit and manage in one tap.'},
+ {a:10.35,b:13.75,top:372,e:'INSIGHTS',h:'Spending,<br><span class="grad">made clear.</span>',p:'Every dollar, beautifully organized.'},
+ {a:14.1,b:17.5,top:372,e:'PAYMENTS',h:'Send money<br><span class="grad">in a blink.</span>',p:'Instant transfers. Zero fees.'},
+ {a:17.9,b:99,top:322,e:'LUMEN',h:'Banking,<br>beautifully<br><span class="grad">simple.</span>',p:'Coming soon to iPhone and Android.'},
+];
+CAPS.forEach((c,i)=>{$('#caps').insertAdjacentHTML('beforeend',`<div class="cap" id="cap${i}" style="top:${c.top}px"><div class="eyebrow">${c.e}</div><h1>${c.h}</h1><p>${c.p}</p></div>`)});
+const capEls=CAPS.map((c,i)=>{const e=$('#cap'+i);return [e.querySelector('.eyebrow'),e.querySelector('h1'),e.querySelector('p')]});
+
+/* ---------- refs ---------- */
+const bal=$('#bal'),cpr=$('#cpr'),sdot=$('#sdot'),spent=$('#spent');
+const cardin=$('#cardin'),cardshadow=$('#cardshadow'),csheen=$('#csheen'),limbar=$('#limbar'),limused=$('#limused');
+const bars=[...document.querySelectorAll('.bar > div')],tip=$('#tip'),catfills=[...document.querySelectorAll('.catfill')];
+const amt=$('#amt'),ring=$('#ring'),ring1=$('#ring1'),ring2=$('#ring2'),sendbtn=$('#sendbtn'),sendtxt=$('#sendtxt'),chk=$('#chk'),sentmsg=$('#sentmsg');
+const orbglow=$('#orbglow'),orb=$('#orb'),s5word=$('#s5word'),s5tag=$('#s5tag'),s5btn=$('#s5btn');
+const floor=$('#floor'),glow=$('#glow'),word=$('#bigword'),intro=$('#intro'),fade=$('#fade'),sheen=$('#sheen');
+
+const SLIDES=[6.25,10.0,13.75,17.5];
+
+function render(t){
+  /* background drift */
+  $('#b1').style.transform=`translate(${Math.sin(t*.32)*140}px,${Math.cos(t*.27)*90}px)`;
+  $('#b2').style.transform=`translate(${Math.cos(t*.29)*130}px,${Math.sin(t*.33)*100}px)`;
+  $('#b3').style.transform=`translate(${Math.sin(t*.25+2)*150}px,${Math.cos(t*.31)*90}px)`;
+  $('#b4').style.transform=`translate(${Math.cos(t*.3+1)*120}px,${Math.sin(t*.26)*110}px)`;
+
+  /* phone pose */
+  const sh=eIO4(prog(t,2.35,3.45));
+  const x=430*sh;
+  const y=(1-eO4(prog(t,0,1.9)))*900+Math.sin(t*1.25)*11;
+  const ry=lerp(lerp(42,-8,eO4(prog(t,0,2.3))),-17,sh)+Math.sin(t*.9)*3.6;
+  const rx=7+Math.sin(t*.75+1)*2.3;
+  const rz=Math.sin(t*.55)*1.2+(1-eO4(prog(t,0,2.3)))*-7;
+  const sc=lerp(1.06,1,sh);
+  phone.style.transform=`translate3d(${x}px,${y}px,0) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${sc})`;
+  floor.style.left=(960+x-220)+'px';floor.style.top=(968+Math.sin(t*1.25)*-3)+'px';
+  floor.style.opacity=eO3(prog(t,.6,2.0))*(0.9-Math.sin(t*1.25)*.08);
+  floor.style.transform=`scaleX(${1-Math.sin(t*1.25)*.03})`;
+  glow.style.left=(960+x*.9-500)+'px';glow.style.top='40px';
+  sheen.style.backgroundPositionX=(((ry+30)/60)*100)+'%';
+
+  /* intro wordmark */
+  const wi=eO3(prog(t,.3,1.4)),wo=eIO(prog(t,2.2,3.1));
+  word.style.opacity=wi*(1-wo);
+  word.style.transform=`translateX(${-wo*260}px) scale(${lerp(.96,1,wi)*(1-wo*.08)})`;
+  intro.style.opacity=wi*(1-wo);
+
+  /* captions */
+  CAPS.forEach((c,i)=>{[0,.09,.2].forEach((d,k)=>{
+    const pin=eO4(prog(t,c.a+d,c.a+d+.75));
+    const pout=c.b>90?0:eIO(prog(t,c.b-.1+d*.4,c.b+.35+d*.4));
+    const o=pin*(1-pout);
+    capEls[i][k].style.opacity=o;
+    capEls[i][k].style.transform=`translateY(${(1-pin)*36-pout*22}px)`;
+  })});
+
+  /* screen track */
+  let idx=0;SLIDES.forEach(s=>{idx+=eIO5(prog(t,s,s+.85))});
+  track.style.transform=`translateX(${-idx*372}px)`;
+  const dk=clamp(idx-3.2,0,.8)/.8;
+  const col=`rgb(${Math.round(lerp(20,255,dk))},${Math.round(lerp(21,255,dk))},${Math.round(lerp(43,255,dk))})`;
+  $('#status').style.color=col;$('#homebar').style.background=col;
+
+  /* S1 balance + spark */
+  const pb=eO3(prog(t,3.4,5.95));
+  bal.textContent=money(24860.52*pb);
+  const bp=prog(t,5.8,6.1);bal.style.transform=`scale(${1+Math.sin(bp*Math.PI)*.025})`;bal.style.transformOrigin='left center';
+  const ps=eIO(prog(t,3.5,5.9));
+  cpr.setAttribute('width',328*ps);
+  const pt=sline.getPointAtLength(SLEN*ps);sdot.setAttribute('cx',pt.x);sdot.setAttribute('cy',pt.y);sdot.style.opacity=ps>0.01?1:0;
+
+  /* S2 card */
+  const ci=eO4(prog(t,6.7,7.7));
+  const fp=eIO5(prog(t,8.0,9.25)),lift=Math.sin(fp*Math.PI);
+  cardin.style.transform=`translateY(${(1-ci)*70-lift*16}px) scale(${lerp(.9,1,ci)+lift*.07}) rotateX(${Math.sin(t*1.1)*2.2+lift*-8}deg) rotateY(${180*fp+Math.sin(t*.9)*3}deg)`;
+  cardin.style.opacity=ci;
+  cardshadow.style.opacity=ci*(1-lift*.35);cardshadow.style.transform=`translateY(${lift*22}px) scale(${1-lift*.12})`;
+  csheen.style.backgroundPositionX=(lerp(100,0,((t-7)/3.4)%1))+'%';
+  const lp=eO3(prog(t,8.4,9.5));limbar.style.width=(62*lp)+'%';limused.textContent='$'+Math.round(1240*lp).toLocaleString('en-US');
+
+  /* S3 insights */
+  const sp=eO3(prog(t,10.9,11.9));spent.textContent='$'+Math.round(3214*sp).toLocaleString('en-US');
+  bars.forEach((b,i)=>{const p=eO4(prog(t,10.95+i*.07,11.75+i*.07));b.style.height=(BARS[i]*150*p)+'px'});
+  const tp=eBack(prog(t,11.9,12.35));tip.style.opacity=prog(t,11.9,12.1);tip.style.transform=`scale(${lerp(.4,1,tp)}) translateY(${(1-tp)*14}px)`;
+  catfills.forEach((f,i)=>{const p=eO4(prog(t,11.7+i*.13,12.6+i*.13));f.style.width=(parseFloat(f.dataset.w)*p*(296/100/2.2*2.2/2.2)*1)+'px'});
+
+  /* S4 send */
+  const ap=eO3(prog(t,14.7,15.7));amt.textContent='$'+(250*ap).toFixed(2);
+  ring.style.opacity=prog(t,14.3,14.6);
+  const press=Math.sin(prog(t,15.9,16.1)*Math.PI)*.04;
+  const mp=eIO(prog(t,16.1,16.6));
+  sendbtn.style.left=(22+134*mp)+'px';sendbtn.style.width=(328-268*mp)+'px';
+  sendbtn.style.transform=`scale(${1-press})`;
+  sendbtn.style.background=mp>0?`linear-gradient(90deg,rgb(${Math.round(lerp(108,52,mp))},${Math.round(lerp(92,211,mp))},${Math.round(lerp(231,153,mp))}),rgb(${Math.round(lerp(232,52,mp))},${Math.round(lerp(111,211,mp))},${Math.round(lerp(176,153,mp))}))`:'linear-gradient(90deg,#6c5ce7,#a06cf2 60%,#e86fb0)';
+  sendtxt.style.opacity=1-prog(t,16.1,16.3);
+  chk.setAttribute('stroke-dashoffset',1-eO3(prog(t,16.45,16.85)));
+  [ring1,ring2].forEach((r,i)=>{const p=prog(t,16.35+i*.18,17.2+i*.18);r.style.opacity=p>0&&p<1?(1-p)*.7:0;r.style.transform=`scale(${1+p*3.4})`});
+  sentmsg.style.opacity=eO3(prog(t,16.6,17.0));sentmsg.style.transform=`translateY(${(1-eO3(prog(t,16.6,17.0)))*10}px)`;
+
+  /* S5 brand */
+  const bp5=eO4(prog(t,18.0,19.0));
+  orb.style.opacity=bp5;orb.style.transform=`scale(${lerp(.5,1,bp5)*(1+Math.sin(t*2.2)*.03)})`;
+  orbglow.style.opacity=bp5*(.8+Math.sin(t*2.2)*.2);orbglow.style.transform=`scale(${1+Math.sin(t*2.2)*.08})`;
+  [[s5word,.1],[s5tag,.25],[s5btn,.45]].forEach(([e,d])=>{const p=eO4(prog(t,18.0+d,19.0+d));e.style.opacity=p;e.style.transform=`translateY(${(1-p)*24}px)`});
+
+  /* chips */
+  CH.forEach((c,i)=>{
+    const el=document.getElementById('chip'+i);
+    const pin=eBack(prog(t,c.a,c.a+.6)),pout=eIO(prog(t,c.b-.1,c.b+.35));
+    const o=clamp(prog(t,c.a,c.a+.3))*(1-pout);
+    el.style.opacity=o;
+    const bob=Math.sin(t*1.6+i*1.7)*6;
+    el.style.transform=`translate3d(${c.x}px,${c.y+bob-pout*24}px,${lerp(30,c.z,clamp(pin,0,1.1))}px) scale(${lerp(.6,1,pin)*(1-pout*.1)})`;
+  });
+
+  /* global fade */
+  fade.style.opacity=Math.max(1-prog(t,0,.55),prog(t,19.35,19.95));
+}
+render(0);
+/* live preview in a normal browser (headless rendering sets navigator.webdriver and drives render(t) itself) */
+if(!navigator.webdriver){let t0=performance.now();(function loop(now){render(((now-t0)/1000)%20);requestAnimationFrame(loop)})(t0)}
+</script></body></html>
